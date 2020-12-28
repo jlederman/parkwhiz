@@ -1,0 +1,14 @@
+{
+  "name": "parkwhiz-checker",
+  "version": "0.1.0",
+  "main": "index.js",
+  "author": "ericgio",
+  "license": "MIT",
+  "private": false,
+  "dependencies": {
+    "axios": "^0.21.1",
+    "dotenv": "^8.2.0",
+    "mailgun-js": "^0.22.0",
+    "qs": "^6.9.4"
+  }
+}
