@@ -72,6 +72,8 @@ async function main() {
 
   if (available.length) {
     send(available);
+  } else {
+    console.log('No spots available.');
   }
 }
 
