@@ -1,80 +1,60 @@
+const sgMail = require('@sendgrid/mail');
 const axios = require('axios');
-const Mailgun = require('mailgun-js');
+const moment = require('moment');
 const { stringify } = require('qs');
 
 require('dotenv').config();
 
 const {
-  MAILGUN_API_KEY,
-  MAILGUN_DOMAIN,
-  START_DATE,
-  END_DATE,
-  FROM_NAME,
-  FROM_ADDRESS,
-  TO,
+    SGAPI,
+    EVENTSURL,
+    TO,
+    FROM,
 } = process.env;
+sgMail.setApiKey(SGAPI)
 
-const mailgun = new Mailgun({
-  apiKey: MAILGUN_API_KEY,
-  domain: MAILGUN_DOMAIN,
-});
-
-const API_URL = 'https://api.parkwhiz.com/v3_1/venues/';
-const VENUE_ID = 478498;
-const PARAMS = {
-  fields: [
-    'event::default',
-    'event:site_url',
-    'event:availability',
-  ].join(','),
-  sort: 'start_time',
+const eventsUrl = EVENTSURL;
+const urlParams = {
+    fields: [
+        'event::default',
+        'event:site_url',
+        'event:availability',
+    ].join(','),
+    sort: 'start_time',
 };
+const endpoint = `${eventsUrl}${stringify(urlParams)}`;
 
-const ENDPOINT = `${API_URL}/${VENUE_ID}/events?${stringify(PARAMS)}`;
-
-/**
- * Format the data and send the email.
- */
-function send(available) {
-  let html =
-    'Hey, the following Mt. Bachelor dates just opened up:<br /><br />';
-
-  available.forEach(({ name, site_url }) => {
-    html += `<a href="https://www.parkwhiz.com${site_url}">${name}</a><br />`;
-  });
-
-  const data = {
-    from: `${FROM_NAME} <${FROM_ADDRESS}>`,
-    to: TO,
-    subject: 'Some Mt. Bachelor Parking Spots Opened Up!',
-    html,
-  };
-
-  mailgun.messages().send(data, (err, body) => {
-    if (err) {
-      console.error(err);
-    } else {
-      console.log('Email sent.');
+function sendEmail(available) {
+    let messageBody = 'parking spots available:<br /><br />';
+    available.forEach(({name, site_url}) => {
+        messageBody += `<a href="https://www.parkwhiz.com${site_url}">${name}</a><br /><br />`;
+    })
+    let msg = {
+        to: TO,
+        from: FROM,
+        subject: 'Parking Spots Available',
+        html: messageBody
     }
-  });
+    sgMail.send(msg)
 }
 
 async function main() {
-  // Get the data from the endpoint.
-  const { data } = await axios.get(ENDPOINT);
-
-  // Filter out dates that don't match the conditions.
-  const available = data.filter(({ availability, start_time }) => (
-    availability.available > 0 &&
-    start_time >= START_DATE &&
-    start_time <= END_DATE
-  ));
-
-  if (available.length) {
-    send(available);
-  } else {
-    console.log('No spots available.');
-  }
+    const { data } = await axios.get(endpoint);
+    let comparisonTime = moment().add(3, 'days');
+    let available = data.filter(({ availability, start_time}) => (
+        availability.available > 0 &&
+        moment(start_time) <= comparisonTime
+    ));
+    if (available.length) {
+        sendEmail(available)
+        console.info(moment.utc().format(), available.length, 'email sent');
+    } else { 
+        console.info(moment.utc().format(), available.length, 'nope')
+    }
 }
 
-main().catch(console.error);
+async function rerun() {
+    await main();
+    setTimeout((rerun), 300000);
+}
+rerun().catch(console.error);
