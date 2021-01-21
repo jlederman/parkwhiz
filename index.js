@@ -40,11 +40,19 @@ function sendEmail(available) {
 
 async function main() {
     const { data } = await axios.get(endpoint);
-    let comparisonTime = moment().add(3, 'days');
-    let available = data.filter(({ availability, start_time}) => (
+    let comparisonTimeA = moment().add(7, 'days');
+    let comparisonTimeB = moment().add(14, 'days');
+    let available = data.filter(({ availability, start_time }) => (
         availability.available > 0 &&
-        moment(start_time) <= comparisonTime
+        moment(start_time) >= comparisonTimeA &&
+        moment(start_time) <= comparisonTimeB
     ));
+
+    console.log(data.filter(
+        d => moment(d.start_time) >= comparisonTimeA && 
+        moment(d.start_time) <= comparisonTimeB
+    ));
+    
     if (available.length) {
         sendEmail(available)
         console.info(moment.utc().format(), available.length, 'email sent');
@@ -55,6 +63,6 @@ async function main() {
 
 async function rerun() {
     await main();
-    setTimeout((rerun), 300000);
+    setTimeout((rerun), 2000);
 }
 rerun().catch(console.error);
